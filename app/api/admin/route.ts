@@ -22,6 +22,53 @@ export async function POST(req: Request) {
     );
   }
 
+  let body: { action?: string; target?: string; id?: string | number } = {};
+  try {
+    body = await req.json();
+  } catch {
+    // empty body = list
+  }
+
+  if (body.action === "delete") {
+    const { target, id } = body;
+    if (target === "participant") {
+      if (typeof id !== "string" || !id) {
+        return NextResponse.json({ error: "id required" }, { status: 400 });
+      }
+      const { error } = await supabaseAdmin
+        .from("participants")
+        .delete()
+        .eq("id", id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+    if (target === "response") {
+      if (typeof id !== "number") {
+        return NextResponse.json({ error: "id required" }, { status: 400 });
+      }
+      const { error } = await supabaseAdmin
+        .from("responses")
+        .delete()
+        .eq("id", id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+    if (target === "all") {
+      const { error: rErr } = await supabaseAdmin
+        .from("responses")
+        .delete()
+        .not("id", "is", null);
+      if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
+      const { error: pErr } = await supabaseAdmin
+        .from("participants")
+        .delete()
+        .not("id", "is", null);
+      if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json({ error: "unknown target" }, { status: 400 });
+  }
+
   const { data: participants, error: pErr } = await supabaseAdmin
     .from("participants")
     .select("*")
@@ -40,3 +87,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ participants, responses });
 }
+

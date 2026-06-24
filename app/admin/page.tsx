@@ -44,6 +44,34 @@ export default function AdminPage() {
   const [responses, setResponses] = useState<ResponseRow[] | null>(null);
   const [catIdx, setCatIdx] = useState(0);
 
+  async function deleteItem(target: "participant" | "response" | "all", id?: string | number) {
+    const label =
+      target === "all"
+        ? "ALL participants and responses"
+        : target === "participant"
+          ? "this participant (and their responses)"
+          : "this response";
+    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "x-admin-password": password, "content-type": "application/json" },
+        body: JSON.stringify({ action: "delete", target, id }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -215,6 +243,13 @@ export default function AdminPage() {
             >
               Refresh
             </button>
+            <button
+              type="button"
+              onClick={() => deleteItem("all")}
+              className="text-sm border border-red-600 text-red-600 px-3 py-1 rounded-full"
+            >
+              Delete all
+            </button>
           </div>
 
           <h2 className="mt-8 font-brand text-xl">By category</h2>
@@ -293,6 +328,7 @@ export default function AdminPage() {
                   <th className="p-2">chosen_base</th>
                   <th className="p-2">created_at</th>
                   <th className="p-2">completed_at</th>
+                  <th className="p-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -304,6 +340,15 @@ export default function AdminPage() {
                     <td className="p-2">{new Date(p.created_at).toLocaleString()}</td>
                     <td className="p-2">
                       {p.completed_at ? new Date(p.completed_at).toLocaleString() : "—"}
+                    </td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        onClick={() => deleteItem("participant", p.id)}
+                        className="text-xs text-red-600 hover:underline"
+                      >
+                        delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -325,6 +370,7 @@ export default function AdminPage() {
                   <th className="p-2">ΔH/ΔS/ΔB</th>
                   <th className="p-2">swatch</th>
                   <th className="p-2">created_at</th>
+                  <th className="p-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -354,6 +400,15 @@ export default function AdminPage() {
                         />
                       </td>
                       <td className="p-2">{new Date(r.created_at).toLocaleString()}</td>
+                      <td className="p-2">
+                        <button
+                          type="button"
+                          onClick={() => deleteItem("response", r.id)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          delete
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

@@ -93,6 +93,9 @@ export default function HomePage() {
       >
         Start exploring
       </button>
+
+      <small className="text-center mt-4 text-[color:var(--color-muted)]">This is part of an MSc User Experience Design pilot study. Your responses will help us explore how people perceive sensory qualities.</small>
+
     </main>
   );
 }

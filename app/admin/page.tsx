@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as XLSX from "xlsx";
 import {
   BASE_QUALITIES,
   MODIFIERS,
@@ -97,66 +98,62 @@ export default function AdminPage() {
     }
   }
 
-  function downloadCsv() {
+  function buildRow(r: ResponseRow, byPid: Map<string, Participant>) {
+    const p = byPid.get(r.participant_id);
+    const d = deltas(r);
+    return {
+      participant_id: r.participant_id,
+      over_18: p?.over_18 ?? "",
+      chosen_base: p?.chosen_base ?? "",
+      participant_created_at: p?.created_at ?? "",
+      completed_at: p?.completed_at ?? "",
+      step: r.step,
+      base_quality: r.base_quality ?? "",
+      modifier: r.modifier ?? "",
+      round: r.round,
+      h: r.h,
+      s: r.s,
+      b: r.b,
+      h_delta: d?.dh ?? "",
+      s_delta: d?.ds ?? "",
+      b_delta: d?.db ?? "",
+      response_created_at: r.created_at,
+    };
+  }
+
+  function downloadXlsx() {
     if (!participants || !responses) return;
-    const rows: string[] = [];
-    rows.push(
-      [
-        "participant_id",
-        "over_18",
-        "chosen_base",
-        "participant_created_at",
-        "completed_at",
-        "step",
-        "base_quality",
-        "modifier",
-        "round",
-        "h",
-        "s",
-        "b",
-        "h_delta",
-        "s_delta",
-        "b_delta",
-        "response_created_at",
-      ].join(","),
-    );
     const byPid = new Map<string, Participant>();
     for (const p of participants) byPid.set(p.id, p);
-    for (const r of responses) {
-      const p = byPid.get(r.participant_id);
-      const d = deltas(r);
-      rows.push(
-        [
-          r.participant_id,
-          p?.over_18 ?? "",
-          p?.chosen_base ?? "",
-          p?.created_at ?? "",
-          p?.completed_at ?? "",
-          r.step,
-          r.base_quality ?? "",
-          r.modifier ?? "",
-          r.round,
-          r.h,
-          r.s,
-          r.b,
-          d?.dh ?? "",
-          d?.ds ?? "",
-          d?.db ?? "",
-          r.created_at,
-        ]
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-          .join(","),
+
+    const wb = XLSX.utils.book_new();
+
+    const allRows = responses.map((r) => buildRow(r, byPid));
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(allRows),
+      "All",
+    );
+
+    for (const c of CATEGORIES) {
+      const filtered = responses.filter((r) =>
+        c.kind === "base"
+          ? r.step === "base" && r.base_quality === c.value
+          : r.step === "modifier" && r.modifier === c.value,
+      );
+      if (filtered.length === 0) continue;
+      const sheetRows = filtered.map((r) => buildRow(r, byPid));
+      const rawName = `${c.kind === "base" ? "base_" : "mod_"}${c.value}`;
+      const safeName = rawName.replace(/[\\/?*[\]:]/g, "_").slice(0, 31);
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(sheetRows),
+        safeName,
       );
     }
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `palettory-export-${new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    XLSX.writeFile(wb, `palettory-export-${stamp}.xlsx`);
   }
 
   const loaded = participants && responses;
@@ -231,10 +228,10 @@ export default function AdminPage() {
             </p>
             <button
               type="button"
-              onClick={downloadCsv}
+              onClick={downloadXlsx}
               className="text-sm border border-[color:var(--color-ink)] px-3 py-1 rounded-full"
             >
-              Download CSV
+              Download XLSX
             </button>
             <button
               type="button"

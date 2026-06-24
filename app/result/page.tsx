@@ -187,6 +187,19 @@ export default function ResultPage() {
       >
         Create another palette
       </button>
+
+      <p className="mt-6 text-[10px] text-[color:var(--color-muted)] text-center leading-snug">
+        For who came from SurveySwap. The following code gives you Karma that
+        can be used to get free research participants at SurveySwap.io. Go to:{" "}
+        <a
+          href="https://surveyswap.io/sr/WLTB-A186-3IHY"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
+          surveyswap.io/sr/WLTB-A186-3IHY
+        </a>
+      </p>
     </main>
   );
 }
